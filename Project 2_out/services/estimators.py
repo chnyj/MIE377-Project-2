@@ -25,6 +25,11 @@ def estimate_factor_model(asset_returns, pca_factors):
     # Step 3: Perform OLS regression: solve Y = Xβ
     betas = np.linalg.lstsq(X, Y, rcond=None)[0]  # (K+1 x N)
     alphas = betas[0]         # Intercept terms (N,)
+    factor_betas = betas[1:]  # (K x N)
+
+    # Step 4: Estimate expected asset returns
+    factor_means = np.mean(pca_factors.values, axis=0)  # (K,)
+    mu = alphas + factor_betas.T @ factor_means         # (N,)
 
     return mu, betas
 

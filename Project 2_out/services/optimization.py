@@ -36,6 +36,52 @@ def MVO(mu, Q):
     return x.value
 
 
+# --------------------------------------
+# Robust MVO with Ellipsoid Uncertainty 
+# --------------------------------------
+
+def robust_mvo_ellipsoid(rets, lam=100, rho=0.05):
+    """
+    Robust Mean-Variance Optimization under ellipsoidal uncertainty in expected returns.
+    
+    Parameters:
+    - rets: T x N matrix of returns (T: time, N: assets)
+    - lam: risk aversion parameter (higher = more risk-averse)
+    - rho: confidence radius for ellipsoidal uncertainty (larger = more conservative)
+    
+    Returns:
+    - Optimal weights (N x 1)
+    """
+
+    T, N = rets.shape
+
+    # Estimate mean and covariance from data
+    mu_hat = np.mean(rets, axis=0)
+    Sigma = np.cov(rets.T)         # Asset return covariance
+    Sigma_mu = np.cov(rets.T) / T  # Estimation covariance of the mean
+
+    # Objective function: risk-adjusted robust return
+    def objective(w):
+        # Nominal mean-variance utility
+        mv_obj = lam * np.dot(w, Sigma @ w) - np.dot(w, mu_hat)
+        # Robust penalty (ellipsoidal): w^T Σ_μ w
+        penalty = rho * np.sqrt(np.dot(w, Sigma_mu @ w))
+        return mv_obj + penalty
+
+    # Constraints: weights sum to 1, no short selling
+    constraints = {'type': 'eq', 'fun': lambda w: np.sum(w) - 1}
+    bounds = [(0, 1) for _ in range(N)]
+    w0 = np.ones(N) / N  # Initial guess
+
+    result = minimize(objective, w0, method='SLSQP', bounds=bounds, constraints=constraints)
+
+    if result.success:
+        return result.x
+    else:
+        raise ValueError("Optimization failed: " + result.message)
+
+
+
 # -------------------------------
 # Enhanced Sharpe Ratio Optimization
 # -------------------------------

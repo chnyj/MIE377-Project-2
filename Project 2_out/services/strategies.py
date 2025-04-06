@@ -1,9 +1,5 @@
 import numpy as np
-from services.optimization import (
-    optimize_sharpe,
-    optimize_cvar,
-    optimize_risk_parity
-)
+from services.optimization import *
 from services.estimators import estimate_factor_model, estimate_covariance
 
 # --------------------------------------------------------
@@ -29,7 +25,7 @@ def evaluate_sharpe(weights, returns):
 # Select the best strategy from Sharpe, CVaR, and Risk Parity
 # --------------------------------------------------------
 
-def select_best_candidate(asset_returns, factor_returns, prev_weights=None, turnover_weight=0.01, alpha=0.95):
+def select_best_candidate(asset_returns, factor_returns, prev_weights=None, turnover_weight=1, alpha=0.95):
     """
     Selects the single best optimization strategy (out of Sharpe, CVaR, Risk Parity)
     based on a composite score balancing Sharpe ratio and turnover penalty.
@@ -51,11 +47,13 @@ def select_best_candidate(asset_returns, factor_returns, prev_weights=None, turn
     weights_sharpe = optimize_sharpe(mu, Sigma)
     weights_cvar = optimize_cvar(asset_returns.values, alpha)
     weights_rp = optimize_risk_parity(Sigma)
+    weights_rmvo = robust_mvo_ellipsoid(asset_returns)
 
     candidates = {
         'Sharpe': weights_sharpe,
         'CVaR': weights_cvar,
-        'RiskParity': weights_rp
+        'RiskParity': weights_rp,
+        'Robust MVO': weights_rmvo
     }
 
     # Score each candidate
@@ -68,6 +66,7 @@ def select_best_candidate(asset_returns, factor_returns, prev_weights=None, turn
 
     # Select the strategy with the highest adjusted score
     best_strategy = max(scores, key=scores.get)
+    print("BEST STRATEGY: ", best_strategy)
     return candidates[best_strategy], best_strategy, scores
 
 
@@ -76,7 +75,7 @@ def select_best_candidate(asset_returns, factor_returns, prev_weights=None, turn
 # --------------------------------------------------------
 
 def ensemble_candidate(asset_returns, factor_returns, prev_weights=None, 
-                       turnover_weight=0.05, alpha=0.95, tau=1.0,
+                       turnover_weight=1, alpha=0.95, tau=10.0,
                        reg_lambda=0.01, transaction_cost_weight=0.01):
     """
     Creates an ensemble portfolio by combining Sharpe, CVaR, and Risk Parity strategies,
@@ -108,8 +107,9 @@ def ensemble_candidate(asset_returns, factor_returns, prev_weights=None,
                            transaction_cost_weight=transaction_cost_weight)
     w_rp = optimize_risk_parity(Sigma, prev_weights=prev_weights, 
                                 transaction_cost_weight=transaction_cost_weight)
+    w_rmvo = robust_mvo_ellipsoid(asset_returns)
 
-    candidates = {'Sharpe': w_sharpe, 'CVaR': w_cvar, 'RiskParity': w_rp}
+    candidates = {'Sharpe': w_sharpe, 'CVaR': w_cvar, 'RiskParity': w_rp, "Robust MVO": w_rmvo}
 
     # Score each strategy with turnover penalty
     scores = {}
@@ -126,6 +126,8 @@ def ensemble_candidate(asset_returns, factor_returns, prev_weights=None,
     # Final ensemble portfolio (weighted combination of all strategies)
     w_combined = (candidate_weights[0] * w_sharpe +
                   candidate_weights[1] * w_cvar +
-                  candidate_weights[2] * w_rp)
+                  candidate_weights[2] * w_rp +
+                  candidate_weights[3] * w_rmvo
+                  )
 
     return w_combined, candidate_weights, scores
