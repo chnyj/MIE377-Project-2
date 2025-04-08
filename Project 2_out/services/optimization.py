@@ -199,3 +199,30 @@ def optimize_risk_parity(Sigma, prev_weights=None, transaction_cost_weight=0.01)
 
     result = minimize(objective, init_weights, method='SLSQP', bounds=bounds, constraints=constraints)
     return result.x
+
+
+# -------------------------------
+# Robust Risk Parity Optimization
+# -------------------------------
+
+def robust_risk_parity(Q_hat, mu, c = 1, rho=0.05):
+
+    n = len(mu)
+
+    # Variables
+    y = cp.Variable(n, pos=True)
+
+    # Worst-case quadratic term: maximize y^T (Q_hat + Δ) y s.t. ||Δ||_F ≤ rho
+    # This max evaluates to: y^T Q_hat y + rho * ||yy^T||_F = y^T Q_hat y + rho * ||y||_2^2
+    robust_quadratic_term = cp.quad_form(y, Q_hat) + rho * cp.norm(y, 2)**2
+
+    # Objective: minimize worst-case risk - log barrier
+    objective = cp.Minimize(0.5 * robust_quadratic_term - c * cp.sum(cp.log(y)))
+    prob = cp.Problem(objective)
+    prob.solve()
+
+    # Normalize to get asset weights
+    y_star = y.value
+    x_star = y_star / np.sum(y_star)
+
+    return x_star

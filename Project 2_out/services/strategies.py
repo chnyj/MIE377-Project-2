@@ -48,11 +48,13 @@ def select_best_candidate(asset_returns, factor_returns, prev_weights=None, turn
     weights_cvar = optimize_cvar(asset_returns.values, alpha)
     weights_rp = optimize_risk_parity(Sigma)
     weights_rmvo = robust_mvo_ellipsoid(asset_returns)
+    weights_rrp = robust_risk_parity(Sigma, mu)
 
     candidates = {
         'Sharpe': weights_sharpe,
         'CVaR': weights_cvar,
         'RiskParity': weights_rp,
+        'Robust Risk Parity': weights_rrp,
         'Robust MVO': weights_rmvo
     }
 
@@ -71,11 +73,11 @@ def select_best_candidate(asset_returns, factor_returns, prev_weights=None, turn
 
 
 # --------------------------------------------------------
-# Ensemble approach combining all three strategies
+# Ensemble approach combining all four strategies
 # --------------------------------------------------------
 
 def ensemble_candidate(asset_returns, factor_returns, prev_weights=None, 
-                       turnover_weight=1, alpha=0.95, tau=10.0,
+                       turnover_weight=1, alpha=0.95, tau=1000,
                        reg_lambda=0.01, transaction_cost_weight=0.01):
     """
     Creates an ensemble portfolio by combining Sharpe, CVaR, and Risk Parity strategies,
@@ -108,15 +110,17 @@ def ensemble_candidate(asset_returns, factor_returns, prev_weights=None,
     w_rp = optimize_risk_parity(Sigma, prev_weights=prev_weights, 
                                 transaction_cost_weight=transaction_cost_weight)
     w_rmvo = robust_mvo_ellipsoid(asset_returns)
+    w_rrp = robust_risk_parity(Sigma, mu)
 
-    candidates = {'Sharpe': w_sharpe, 'CVaR': w_cvar, 'RiskParity': w_rp, "Robust MVO": w_rmvo}
+    candidates = {'Sharpe': w_sharpe, 'CVaR': w_cvar, 'RiskParity': w_rp, "Robust MVO": w_rmvo, "Robust RiskParity": w_rrp}
 
     # Score each strategy with turnover penalty
     scores = {}
     for name, w in candidates.items():
         sharpe = evaluate_sharpe(w, asset_returns.values)
         turnover = np.sum(np.abs(w - prev_weights)) if prev_weights is not None else 0
-        scores[name] = 0.8 * sharpe - 0.2 * (turnover ** 2) * turnover_weight
+        turnover_norm = turnover / np.sqrt(len(w))
+        scores[name] = 0.8 * sharpe - 0.2 * (turnover_norm ** 2) * turnover_weight # 80-20 split for sharpe and turnover 
 
     # Convert scores into softmax weights for ensemble combination
     score_array = np.array(list(scores.values()))
@@ -127,7 +131,9 @@ def ensemble_candidate(asset_returns, factor_returns, prev_weights=None,
     w_combined = (candidate_weights[0] * w_sharpe +
                   candidate_weights[1] * w_cvar +
                   candidate_weights[2] * w_rp +
-                  candidate_weights[3] * w_rmvo
+                  candidate_weights[3] * w_rmvo +
+                  candidate_weights[4] * w_rrp
                   )
+    print("candidates weights sum: ", sum(candidate_weights))
 
     return w_combined, candidate_weights, scores

@@ -4,6 +4,7 @@ from services.estimators import estimate_covariance, estimate_factor_model
 from services.factor_model_selection import apply_pca_to_factors
 from services.strategies import select_best_candidate
 from services.strategies import ensemble_candidate
+from services.optimization import *
 
 # Tracks portfolio weights across function calls if using ensemble_candidate directly
 previous_weights = None
@@ -121,10 +122,18 @@ def project_function(prices, factors):
     """
     global previous_weights
 
+    # Estimate expected returns and risk
+    Sigma = estimate_covariance(prices, use_shrinkage=True)
+    mu, _ = estimate_factor_model(prices, factors)
+
     # Generate ensemble candidate weights and track their scores
-    w_combined, candidate_weights, scores = ensemble_candidate(prices, factors, prev_weights=previous_weights)
-    print("Ensemble candidate weights:", candidate_weights)
-    print("Candidate scores:", scores)
+    # w_combined, candidate_weights, scores = ensemble_candidate(prices, factors, prev_weights=previous_weights)
+    # print("Best Strategy candidate weights:", candidate_weights)
+    # print("Candidate scores:", scores)
+
+    # w_combined = optimize_risk_parity(Sigma, prev_weights=previous_weights)
+    # w_combined = optimize_sharpe(mu, Sigma=Sigma, prev_weights=previous_weights)
+    w_combined = robust_risk_parity(Sigma, mu)
 
     # Update previous weights to be used in the next call
     previous_weights = w_combined
