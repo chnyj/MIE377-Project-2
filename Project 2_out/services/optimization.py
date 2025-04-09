@@ -205,7 +205,7 @@ def optimize_risk_parity(Sigma, prev_weights=None, transaction_cost_weight=0.01)
 # Robust Risk Parity Optimization
 # -------------------------------
 
-def robust_risk_parity(Q_hat, mu, c = 1, rho=0.05):
+def robust_risk_parity(Q_hat, mu, c = 1, rho=0.1):
 
     n = len(mu)
 

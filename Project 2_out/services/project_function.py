@@ -112,7 +112,8 @@ def run_trading_algorithm(prices, factors, rebalance_period=6, calibration_years
         'strategies': strategy_choices
     }
 
-def project_function(prices, factors):
+def project_function(prices, factors, trc, turnover_weight=1, alpha=0.95, tau=1000,
+                       reg_lambda=0.01):
     """
     Alternative entry point using ensemble_candidate, which returns a blended portfolio
     based on multiple optimization strategies.
@@ -131,10 +132,9 @@ def project_function(prices, factors):
     # print("Best Strategy candidate weights:", candidate_weights)
     # print("Candidate scores:", scores)
 
-    # w_combined = optimize_risk_parity(Sigma, prev_weights=previous_weights)
+    w_combined = optimize_risk_parity(Sigma, prev_weights=previous_weights, transaction_cost_weight=trc)
     # w_combined = optimize_sharpe(mu, Sigma=Sigma, prev_weights=previous_weights)
-    w_combined = robust_risk_parity(Sigma, mu)
-
+    # w_combined = robust_risk_parity(Sigma, mu, c=constant, rho=r)
     # Update previous weights to be used in the next call
     previous_weights = w_combined
     return w_combined
