@@ -128,8 +128,8 @@ def project_function(prices, factors):
 
     # Generate ensemble candidate weights and track their scores
     w_combined, candidate_weights, scores = ensemble_candidate(prices, factors, prev_weights=previous_weights)
-    print("Best Strategy candidate weights:", candidate_weights)
-    print("Candidate scores:", scores)
+    # print("Best Strategy candidate weights:", candidate_weights)
+    # print("Candidate scores:", scores)
 
     # w_combined = optimize_sharpe(mu, Sigma, prev_weights=previous_weights)
     # w_combined = robust_mvo_ellipsoid(prices)
