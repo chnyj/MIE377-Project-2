@@ -112,7 +112,7 @@ def ensemble_candidate(asset_returns, factor_returns, prev_weights=None,
     w_rmvo = robust_mvo_ellipsoid(asset_returns)
     w_rrp = robust_risk_parity(Sigma, mu)
 
-    candidates = {'Sharpe': w_sharpe, 'CVaR': w_cvar, 'RiskParity': w_rp, "Robust MVO": w_rmvo, "Robust RiskParity": w_rrp}
+    candidates = { "Robust Risk Parity": w_rrp, "Cvar": w_cvar}
 
     # Score each strategy with turnover penalty
     scores = {}
@@ -128,12 +128,16 @@ def ensemble_candidate(asset_returns, factor_returns, prev_weights=None,
     candidate_weights = exp_scores / np.sum(exp_scores)
 
     # Final ensemble portfolio (weighted combination of all strategies)
-    w_combined = (candidate_weights[0] * w_sharpe +
-                  candidate_weights[1] * w_cvar +
-                  candidate_weights[2] * w_rp +
-                  candidate_weights[3] * w_rmvo +
-                  candidate_weights[4] * w_rrp
+    w_combined = (
+                #   
+                  candidate_weights[0] * w_cvar +
+                  candidate_weights[1] * w_rrp 
+                #   candidate_weights[2] * w_rmvo 
+                #   candidate_weights[2] * w_sharpe
+                #   candidate_weights[2] * w_rp
+                  
+                  
                   )
-    print("candidates weights sum: ", sum(candidate_weights))
+    # print("candidates weights sum: ", sum(candidate_weights))
 
     return w_combined, candidate_weights, scores

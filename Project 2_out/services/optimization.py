@@ -207,6 +207,29 @@ def optimize_risk_parity(Sigma, prev_weights=None, transaction_cost_weight=0.01)
 
 def robust_risk_parity(Q_hat, mu, c = 1, rho=0.1):
 
+    """
+        Computes the Robust Risk Parity portfolio allocation.
+
+        This method equalizes the risk contribution of each asset under model uncertainty 
+        in the covariance matrix. It adds robustness by considering the worst-case 
+        perturbation of the covariance matrix within a Frobenius norm ball of radius `rho`.
+
+        The optimization problem is:
+            minimize_{y > 0}  0.5 * yᵀ Q_hat y + 0.5 * rho * ||y||² - c * sum(log(y))
+            subject to: y_i > 0 for all i
+        The final portfolio weights x* are given by: x* = y* / sum(y*)
+
+        Parameters:
+            Q_hat (ndarray): Estimated covariance matrix of asset returns (shape: N x N)
+            mu (ndarray): Expected returns vector (shape: N,) — not used in the optimization
+            c (float): Log-barrier coefficient controlling risk balance/diversification (default: 1)
+            rho (float): Robustness parameter controlling the size of the uncertainty set (default: 0.1)
+
+        Returns:
+            ndarray: Robust risk parity portfolio weights (shape: N,)
+
+    """
+
     n = len(mu)
 
     # Variables

@@ -23,7 +23,7 @@ from services.project_function import *
 import pandas as pd
 
 def back_test_main(turnover_weight, alpha, tau,
-                       reg_lambda, transaction_cost_weight):
+                       reg_lambda, transaction_cost_weight, rho):
     adjClose = pd.read_csv("MIE377_AssetPrices_3.csv", index_col=0)
     factorRet = pd.read_csv("MIE377_FactorReturns_3.csv", index_col=0)
 
@@ -132,7 +132,7 @@ def back_test_main(turnover_weight, alpha, tau,
         # Take in the period returns and period factor returns and produce
         # an allocation
         #----------------------------------------------------------------------
-        x[:,t] = project_function(periodReturns, periodFactRet, transaction_cost_weight)
+        x[:,t] = project_function(periodReturns, periodFactRet, tau)
 
         #Calculate the turnover rate
         if t > 0:
@@ -182,85 +182,60 @@ def back_test_main(turnover_weight, alpha, tau,
 
     return (SR[0]), avgTurnover
 
-# %%
-#--------------------------------------------------------------------------
-# 3.2 Portfolio wealth evolution plot
-#--------------------------------------------------------------------------
-# Calculate the dates of the out-of-sample period
 
-# fig = plt.figure(1)
-# portfValue.plot(title = 'Portfolio wealth evolution',
-#                 ylabel = 'Total wealth',
-#                 figsize = (6, 3),
-#                 legend = False)
-# plt.savefig("images/wealth.svg")
 
-# fig2 = plt.figure(2)
-# x[x < 0] = 0
-# weights = pd.DataFrame(x, index=tickers)
-# weights.columns = [col + 1 for col in weights.columns]
-# weights.T.plot.area(title='Portfolio weights',
-#                   ylabel='Weights', xlabel='Rebalance Period',
-#                   figsize=(6, 3),
-#                   legend=True, stacked=True)
-# plt.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
-# plt.savefig("images/weights.svg")
-# plt.show()   # This will display the plot window
-
-#--------------------------------------------------------------------------
-# 3.3 Portfolio weights plot
-#--------------------------------------------------------------------------
-# Portfolio weights
-
-# fig2 = plt.figure(2);
-# x[x < 0] = 0
-# weights = pd.DataFrame(x, index = tickers)
-# weights.columns = [col + 1 for col in weights.columns]
-# weights.T.plot.area(title = 'Portfolio weights',
-#                   ylabel = 'Weights', xlabel = 'Rebalance Period',
-#                   figsize = (6, 3),
-#                   legend = True, stacked = True)
-# plt.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
-# plt.savefig("images/weights.svg");
-#
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-# % Program End
-
-# %%
-
-def hyperparam_tune(turnover_weight, alpha, tau,
-                       reg_lambda, transaction_cost_weight):
-    best_sharpe = []
+def hyperparam_tune(turnover_weight: float, alpha: float, tau: float,
+                       reg_lambda: float, transaction_cost_weight: float, rho:float):
+    best_sharpe = -np.inf
     turn = []
+    res = []
+    best_param = None
+    
 
     start_time = time.time()
     print("Calculating...")
-    for i in range(len(transaction_cost_weight)):
-        best_sharpe[i], turn[i] = back_test_main(turnover_weight, alpha, tau,
-                       reg_lambda, transaction_cost_weight)
+    
+    for j in range(len(tau)):
+        sharpetemp, turntemp = back_test_main(turnover_weight, alpha, tau[j],
+                    reg_lambda, transaction_cost_weight, rho)
+        res.append([ tau[j], sharpetemp])
+        if sharpetemp > best_sharpe:
+            best_sharpe = sharpetemp
+            best_param = tau[j]
+            # turn.append(turntemp)
+            
+        
 
     end_time = time.time()
     print("Elasped time is "+ str(end_time - start_time) + ' seconds')
 
-    sharpe_ind, high = max(enumerate(best_sharpe), key=lambda x: x[1] )
-    turn_ind, low = min( enumerate(turn) , key=lambda x: x[1] )
+    # sharpe_ind, high = max(enumerate(best_sharpe), key=lambda x: x[1] )
+    # turn_ind, low = min( enumerate(turn) , key=lambda x: x[1] )
 
-    print(f"Best Sharpe: {high}, Index: {transaction_cost_weight[sharpe_ind]}")
-    print(f"Best Turoner: {low}, Index: {transaction_cost_weight[turn_ind]}")
+    # print(f"Best Sharpe: {high}, Index: {combo[sharpe_ind]}")
+    # print(f"Best Turoner: {low}, Index: {combo[turn_ind]}")
+
+    print("Best Sharpe: ", best_sharpe)
+    print("Best Tau: ", best_param)
+    # print("Best Lambda: ", best_param[0])
+
+    shp = [row[1] for row in res]
+    # rh = [row[1] for row in res]
+    tau = [row[0] for row in res]
     
 
     plt.figure(1)
-    plt.plot(transaction_cost_weight, best_sharpe, 'o')
-    plt.title("Sharpe for RRP vs Rho")
-    plt.xlabel("Rho")
-    plt.ylabel("Sharpe Ratio")
+    plt.plot(tau, shp, 'o')
+    plt.title("Relationship Between Sharpe for RMVO vs Tau")
+    plt.xlabel("Lambda")
+    plt.ylabel("Sharpe")
     plt.show()
 
-    plt.figure(2)
-    plt.plot(transaction_cost_weight, turn,'o')
-    plt.title("Average Turnover rate for RRP vs Rho")
-    plt.xlabel("Rho")
-    plt.ylabel("Turnover rate")
-    plt.show()
+    # plt.figure(2)
+    # plt.plot(rh, shp,'o')
+    # plt.title("Relationship Between Sharpe for RMVO vs Rho ")
+    # plt.xlabel("Rho")
+    # plt.ylabel("Sharpe")
+    # plt.show()
 
 
